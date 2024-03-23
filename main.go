@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 )
+
+var timeLimit time.Duration
 
 func readCsv(filename string) map[string]string {
 
@@ -36,34 +40,57 @@ func readCsv(filename string) map[string]string {
 
 }
 
-func askQuestion(problem, answer string) bool {
+func askQuestion(question, answer string) bool {
 
-	fmt.Println(problem)
+	fmt.Println(question)
 
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	input := scanner.Text()
+	timer := time.NewTimer(timeLimit)
+	answerCh := make(chan string)
 
-	return input == answer
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		answerCh <- strings.TrimSpace(input)
+	}()
 
+	select {
+
+	case input := <-answerCh:
+		return input == answer
+
+	case <-timer.C:
+		fmt.Println("Time's up!")
+		os.Exit(0)
+
+	}
+
+	return false
 }
 
-func askQuestions(problems map[string]string) int {
-	score := 0
+func runQuiz(problems map[string]string) (score int) {
+
 	for question, answer := range problems {
+
 		if askQuestion(question, answer) {
 			score += 1
 		}
 	}
-	return score
+
+	fmt.Println("The final score is", score, "out of", len(problems))
+
+	return
+
 }
 
 func main() {
 
 	fileLocation := flag.String("f", "problems.csv", "provides problem file location")
+	questionTime := flag.Int("t", 30, "provides time to answer for each question")
 	flag.Parse()
-	problems := readCsv(*fileLocation)
 
-	fmt.Println("The final score is", askQuestions(problems), "out of", len(problems))
+	problems := readCsv(*fileLocation)
+	timeLimit = time.Duration(*questionTime) * time.Second
+
+	runQuiz(problems)
 
 }
