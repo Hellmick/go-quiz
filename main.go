@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -34,10 +36,34 @@ func readCsv(filename string) map[string]string {
 
 }
 
-func main() {
-	problems := readCsv("problems.csv")
+func askQuestion(problem, answer string) bool {
 
-	for key, value := range problems {
-		fmt.Println("The problem is", key, " and the answer is ", value)
+	fmt.Println(problem)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	input := scanner.Text()
+
+	return input == answer
+
+}
+
+func askQuestions(problems map[string]string) int {
+	score := 0
+	for question, answer := range problems {
+		if askQuestion(question, answer) {
+			score += 1
+		}
 	}
+	return score
+}
+
+func main() {
+
+	fileLocation := flag.String("f", "problems.csv", "provides problem file location")
+	flag.Parse()
+	problems := readCsv(*fileLocation)
+
+	fmt.Println("The final score is", askQuestions(problems), "out of", len(problems))
+
 }
